@@ -746,6 +746,82 @@ double kappa(int a_c, int a_no_c, int no_a_c, int no_a_no_c) {
     return 1.0 - (num / denom);
 }
 
+double rule_size_metric(const Chromosome& crom1, int max_elements) {
+    int count = 0;
+    for (int v : crom1) {
+        if (v != 0) {
+            count += 1;
+        }
+    }
+    if (max_elements <= 0) {
+        return 2.0;
+    }
+    double value = (static_cast<double>(max_elements) - count) / 6.0;
+    if (value < 0.0) {
+        return 0.0;
+    }
+    if (value > 2.0) {
+        return 2.0;
+    }
+    return value;
+}
+
+double support(int a_c, int a_no_c, int no_a_c, int no_a_no_c) {
+    int total = a_c + a_no_c + no_a_c + no_a_no_c;
+    if (total == 0) {
+        return 3.0;
+    }
+    double supp = a_c / static_cast<double>(total);
+    return (1.0 - supp) * 2.0;
+}
+
+double confidence(int a_c, int a_no_c, int no_a_c, int no_a_no_c) {
+    int total_a = a_c + a_no_c;
+    if (total_a == 0) {
+        return 3.0;
+    }
+    double conf = a_c / static_cast<double>(total_a);
+    return (1.0 - conf) * 2.0;
+}
+
+double leverage(int a_c, int a_no_c, int no_a_c, int no_a_no_c) {
+    int total = a_c + a_no_c + no_a_c + no_a_no_c;
+    if (total == 0) {
+        return 3.0;
+    }
+    double p_x = (a_c + a_no_c) / static_cast<double>(total);
+    double p_y = (a_c + no_a_c) / static_cast<double>(total);
+    double p_xy = a_c / static_cast<double>(total);
+    double lev = p_xy - (p_x * p_y);
+    return (0.25 - lev) * 4.0;
+}
+
+double chi_cuadrada(int a_c, int a_no_c, int no_a_c, int no_a_no_c) {
+    int total = a_c + a_no_c + no_a_c + no_a_no_c;
+    if (total == 0) {
+        return 3.0;
+    }
+    double a = static_cast<double>(a_c);
+    double b = static_cast<double>(a_no_c);
+    double c = static_cast<double>(no_a_c);
+    double d = static_cast<double>(no_a_no_c);
+    double denom = (a + b) * (c + d) * (a + c) * (b + d);
+    if (denom == 0.0) {
+        return 3.0;
+    }
+    double chi2 = (static_cast<double>(total) * (a * d - b * c) * (a * d - b * c)) / denom;
+    return (1.0 / (1.0 + chi2)) * 2.0;
+}
+
+double coverage(int a_c, int a_no_c, int no_a_c, int no_a_no_c) {
+    int total = a_c + a_no_c + no_a_c + no_a_no_c;
+    if (total == 0) {
+        return 3.0;
+    }
+    double cov = (a_c + a_no_c) / static_cast<double>(total);
+    return (1.0 - cov) * 2.0;
+}
+
 static long long comb_ll(int n, int k) {
     if (k < 0 || k > n) {
         return 0;

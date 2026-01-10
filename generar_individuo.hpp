@@ -112,6 +112,18 @@ double phi(int a_c, int a_no_c, int no_a_c, int no_a_no_c);
 
 double kappa(int a_c, int a_no_c, int no_a_c, int no_a_no_c);
 
+double rule_size_metric(const Chromosome& crom1, int max_elements = 12);
+
+double support(int a_c, int a_no_c, int no_a_c, int no_a_no_c);
+
+double confidence(int a_c, int a_no_c, int no_a_c, int no_a_no_c);
+
+double leverage(int a_c, int a_no_c, int no_a_c, int no_a_no_c);
+
+double chi_cuadrada(int a_c, int a_no_c, int no_a_c, int no_a_no_c);
+
+double coverage(int a_c, int a_no_c, int no_a_c, int no_a_no_c);
+
 std::vector<std::vector<double>> generar_pesos_das_dennis(int m, int n_vectores);
 
 }  // namespace moead

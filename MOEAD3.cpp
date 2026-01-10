@@ -19,7 +19,7 @@ namespace {
 
 constexpr int POP_SIZE = 462;
 constexpr int GENERATIONS = 300;
-constexpr int M = 4;
+constexpr int M = 6;
 constexpr int NEIGHBOR_SIZE = 15;
 constexpr double P_CROSS = 0.6;
 constexpr double P_MUT_EXT = 0.4;
@@ -30,12 +30,14 @@ constexpr double MUT_PROB_MIN = 0.3;
 constexpr double MUT_PROB_MAX = 0.8;
 constexpr int LOG_INTERVAL = 1;
 constexpr int HV_SAMPLES = 20000;
-constexpr std::array<double, M> HV_REF_POINT = {2.0, 2.0, 2.0, 2.0};
+constexpr std::array<double, M> HV_REF_POINT = {2.0, 2.0, 2.0, 2.0, 2.0, 2.0};
 constexpr std::array<const char*, M> METRIC_NAMES = {
-    "jaccard",
-    "cosine",
-    "phi",
-    "kappa"
+    "support",
+    "confidence",
+    "leverage",
+    "chi_cuadrada",
+    "coverage",
+    "rule_size"
 };
 
 using Obj = std::array<double, M>;
@@ -144,10 +146,12 @@ static Obj evaluar_individuo(
     std::tie(a_c, a_no_c, no_a_c, no_a_no_c) = moead::contar_casos_regla(df, crom1, crom2);
 
     Obj result = {
-        moead::jaccard(a_c, a_no_c, no_a_c, no_a_no_c),
-        moead::cosine(a_c, a_no_c, no_a_c, no_a_no_c),
-        moead::phi(a_c, a_no_c, no_a_c, no_a_no_c),
-        moead::kappa(a_c, a_no_c, no_a_c, no_a_no_c)
+        moead::support(a_c, a_no_c, no_a_c, no_a_no_c),
+        moead::confidence(a_c, a_no_c, no_a_c, no_a_no_c),
+        moead::leverage(a_c, a_no_c, no_a_c, no_a_no_c),
+        moead::chi_cuadrada(a_c, a_no_c, no_a_c, no_a_no_c),
+        moead::coverage(a_c, a_no_c, no_a_c, no_a_no_c),
+        moead::rule_size_metric(crom1)
     };
     eval_cache.emplace(std::move(key), result);
     return result;
@@ -599,7 +603,7 @@ generar_hijos(
 
 static void guardar_reglas(const std::vector<Individual>& pop, const std::string& path) {
     std::ofstream out(path);
-    out << "antecedente,consecuente,jaccard,cosine,phi,kappa\n";
+    out << "antecedente,consecuente,support,confidence,leverage,chi_cuadrada,coverage,rule_size\n";
     out << std::fixed << std::setprecision(6);
     for (const auto& ind : pop) {
         auto decoded = decode_rule(ind.c1, ind.c2);
@@ -608,7 +612,9 @@ static void guardar_reglas(const std::vector<Individual>& pop, const std::string
             << ind.metrics[0] << ","
             << ind.metrics[1] << ","
             << ind.metrics[2] << ","
-            << ind.metrics[3] << "\n";
+            << ind.metrics[3] << ","
+            << ind.metrics[4] << ","
+            << ind.metrics[5] << "\n";
     }
 }
 
@@ -817,7 +823,7 @@ moead_run(
     return {pop, ideal, invalid_counts, log_rows, mutation_log};
 }
 
-}  
+}  // namespace
 
 int main() {
     try {
@@ -917,7 +923,7 @@ int main() {
             }
             double hv_avg = hv_sum / runs_info.size();
             double seed_avg = seed_sum / runs_info.size();
-            std::string summary_path = "summary_moead2.csv";
+            std::string summary_path = "summary_moead3.csv";
             {
                 std::ofstream out(summary_path);
                 out << "seed_avg,hv_avg\n";
