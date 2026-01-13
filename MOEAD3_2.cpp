@@ -1,4 +1,4 @@
-#include "generar_individuo.hpp"
+#include "generar_individuo_copy.hpp"
 
 #include <algorithm>
 #include <array>
@@ -18,7 +18,7 @@
 namespace {
 
 constexpr int POP_SIZE = 462;
-constexpr int GENERATIONS = 100;
+constexpr int GENERATIONS = 1000;
 constexpr int M = 6;
 constexpr int NEIGHBOR_SIZE = 15;
 constexpr double P_CROSS = 0.6;
@@ -308,6 +308,8 @@ struct Stats {
     Obj mean_vals = {};
     Obj std_vals = {};
 };
+
+static double hipervolumen(const std::vector<Obj>& objs, const Obj& ref_point);
 
 static Stats resumen_estadisticas(
     const std::vector<Obj>& objs,
@@ -828,7 +830,7 @@ moead_run(
 }  
 int main() {
     try {
-        auto df = moead::read_csv("discretized_dataset.csv");
+        auto df = moead::read_csv("discretized_dataset_2.csv");
         std::vector<int> seeds = {2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71,73,79,83,89,97,101,103,107,109,113};
 
         auto weights = moead::generar_pesos_das_dennis(M, POP_SIZE);

@@ -1,0 +1,51 @@
+TestCALifetime[ca_List] := 
+ If[# == 0, -1, Length[ca] - #] &[
+  LengthWhile[Reverse[ca], Total[#] == 0 &]]
+
+
+k = 3;
+r = 1;
+s = 2 r + 1;
+T = 1000;
+totalRules = k^(k^s)
+
+dataset = ParallelTable[
+   rule = RandomInteger[totalRules] - 1;
+   ruleVector = IntegerDigits[rule, 3, 27];
+   ca = CellularAutomaton[{rule, k, r}, {{1}, 0}, T];
+   counts = Count[Flatten[ca], #] & /@ Range[0, 2];
+   width = Length[ca[[1]]];
+   infinite = TestCALifetime[ca];
+   symmetric = ca === Reverse[ca, 2];
+   activity = Mean@Flatten@Unitize@Abs@Differences[ca, 1, 2];
+   entropy = 
+    Mean@(With[{p = N@Values@Counts[#]}, 
+         If[Length[p] == 1, 0., Entropy[p/Total[p]]]] & /@ ca);
+   transient = 
+    Module[{t}, 
+     t = SelectFirst[Range[Length[ca] - 2], ca[[#]] === ca[[# + 2]] &];
+     If[t === Missing["NotFound"], Length[ca], t]];
+   sensitivity = Module[{ca1, ca2, d},
+     ca1 = 
+      CellularAutomaton[{rule, k, r}, 
+       Join[ConstantArray[0, T], {1}, ConstantArray[0, T]], T];
+     ca2 = 
+      CellularAutomaton[{rule, k, r}, 
+       Join[ConstantArray[0, T], {2}, ConstantArray[0, T]], T];
+     d = Mean /@ Abs[ca1 - ca2];
+     Mean[d]];
+   period = 
+    Module[{t}, 
+     t = SelectFirst[Tuples[Range[1, 10], 2], 
+       ca[[#[[1]]]] === ca[[#[[2]]]] &];
+     If[t === Missing["NotFound"], 0, Abs@(Subtract @@ t)]];
+   entropyTime = 
+    Mean@(Entropy@Normalize[Values@Counts[#], Total] & /@ 
+       Transpose[ca]);
+   Join[ruleVector, 
+    counts, {width}, {infinite}, {symmetric}, {activity}, {entropy}, \
+{transient}, {sensitivity}, {entropyTime}]
+   , 1000000];
+Iconize[dataset]
+
+Select[dataset1, #[[-2]] == 0 &] // Length

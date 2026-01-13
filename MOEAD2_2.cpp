@@ -1,4 +1,4 @@
-#include "generar_individuo.hpp"
+#include "generar_individuo_copy.hpp"
 
 #include <algorithm>
 #include <array>
@@ -17,9 +17,9 @@
 
 namespace {
 
-constexpr int POP_SIZE = 462;
-constexpr int GENERATIONS = 100;
-constexpr int M = 6;
+constexpr int POP_SIZE = 286;
+constexpr int GENERATIONS = 300;
+constexpr int M = 4;
 constexpr int NEIGHBOR_SIZE = 15;
 constexpr double P_CROSS = 0.6;
 constexpr double P_MUT_EXT = 0.4;
@@ -30,14 +30,12 @@ constexpr double MUT_PROB_MIN = 0.3;
 constexpr double MUT_PROB_MAX = 0.8;
 constexpr int LOG_INTERVAL = 1;
 constexpr int HV_SAMPLES = 20000;
-constexpr std::array<double, M> HV_REF_POINT = {2.0, 2.0, 2.0, 2.0, 2.0, 2.0};
+constexpr std::array<double, M> HV_REF_POINT = {2.0, 2.0, 2.0, 2.0};
 constexpr std::array<const char*, M> METRIC_NAMES = {
-    "support",
-    "confidence",
-    "leverage",
-    "chi_cuadrada",
-    "coverage",
-    "rule_size"
+    "jaccard",
+    "cosine",
+    "phi",
+    "kappa"
 };
 
 using Obj = std::array<double, M>;
@@ -146,12 +144,10 @@ static Obj evaluar_individuo(
     std::tie(a_c, a_no_c, no_a_c, no_a_no_c) = moead::contar_casos_regla(df, crom1, crom2);
 
     Obj result = {
-        moead::support(a_c, a_no_c, no_a_c, no_a_no_c),
-        moead::confidence(a_c, a_no_c, no_a_c, no_a_no_c),
-        moead::leverage(a_c, a_no_c, no_a_c, no_a_no_c),
-        moead::chi_cuadrada(a_c, a_no_c, no_a_c, no_a_no_c),
-        moead::coverage(a_c, a_no_c, no_a_c, no_a_no_c),
-        moead::rule_size_metric(crom1)
+        moead::jaccard(a_c, a_no_c, no_a_c, no_a_no_c),
+        moead::cosine(a_c, a_no_c, no_a_c, no_a_no_c),
+        moead::phi(a_c, a_no_c, no_a_c, no_a_no_c),
+        moead::kappa(a_c, a_no_c, no_a_c, no_a_no_c)
     };
     eval_cache.emplace(std::move(key), result);
     return result;
@@ -301,79 +297,6 @@ static std::vector<int> frente_pareto_indices(const std::vector<Obj>& objs) {
     return indices;
 }
 
-struct Stats {
-    double hv = 0.0;
-    Obj min_vals = {};
-    Obj max_vals = {};
-    Obj mean_vals = {};
-    Obj std_vals = {};
-};
-
-static Stats resumen_estadisticas(
-    const std::vector<Obj>& objs,
-    const Obj& hv_ref) {
-    Stats stats;
-    if (objs.empty()) {
-        return stats;
-    }
-
-    stats.min_vals = objs[0];
-    stats.max_vals = objs[0];
-    for (const auto& obj : objs) {
-        for (std::size_t i = 0; i < M; ++i) {
-            stats.min_vals[i] = std::min(stats.min_vals[i], obj[i]);
-            stats.max_vals[i] = std::max(stats.max_vals[i], obj[i]);
-            stats.mean_vals[i] += obj[i];
-        }
-    }
-
-    for (std::size_t i = 0; i < M; ++i) {
-        stats.mean_vals[i] /= static_cast<double>(objs.size());
-    }
-
-    for (const auto& obj : objs) {
-        for (std::size_t i = 0; i < M; ++i) {
-            double diff = obj[i] - stats.mean_vals[i];
-            stats.std_vals[i] += diff * diff;
-        }
-    }
-
-    for (std::size_t i = 0; i < M; ++i) {
-        stats.std_vals[i] = std::sqrt(stats.std_vals[i] / static_cast<double>(objs.size()));
-    }
-
-    stats.hv = hipervolumen(objs, hv_ref);
-    return stats;
-}
-
-static std::pair<int, int> seleccionar_padres(
-    int idx,
-    const std::vector<std::vector<int>>& vecinos,
-    int pop_size,
-    std::mt19937& rng,
-    double prob_vecindario = 0.9) {
-    const auto& vec = vecinos[idx];
-    std::vector<int> fuera;
-    fuera.reserve(pop_size);
-    for (int j = 0; j < pop_size; ++j) {
-        if (std::find(vec.begin(), vec.end(), j) == vec.end()) {
-            fuera.push_back(j);
-        }
-    }
-
-    const std::vector<int>& pool = (rand_real(rng) < prob_vecindario || fuera.empty()) ? vec : fuera;
-    if (pool.size() == 1) {
-        return {pool[0], pool[0]};
-    }
-
-    int i1 = rand_int(0, static_cast<int>(pool.size() - 1), rng);
-    int i2 = i1;
-    while (i2 == i1) {
-        i2 = rand_int(0, static_cast<int>(pool.size() - 1), rng);
-    }
-    return {pool[i1], pool[i2]};
-}
-
 static double hipervolumen(const std::vector<Obj>& objs, const Obj& ref_point) {
     if (objs.empty()) {
         return 0.0;
@@ -435,6 +358,51 @@ static double hipervolumen(const std::vector<Obj>& objs, const Obj& ref_point) {
     }
 
     return volume * (static_cast<double>(dominated_count) / static_cast<double>(HV_SAMPLES));
+}
+
+struct Stats {
+    double hv = 0.0;
+    Obj min_vals = {};
+    Obj max_vals = {};
+    Obj mean_vals = {};
+    Obj std_vals = {};
+};
+
+static Stats resumen_estadisticas(
+    const std::vector<Obj>& objs,
+    const Obj& hv_ref) {
+    Stats stats;
+    if (objs.empty()) {
+        return stats;
+    }
+
+    stats.min_vals = objs[0];
+    stats.max_vals = objs[0];
+    for (const auto& obj : objs) {
+        for (std::size_t i = 0; i < M; ++i) {
+            stats.min_vals[i] = std::min(stats.min_vals[i], obj[i]);
+            stats.max_vals[i] = std::max(stats.max_vals[i], obj[i]);
+            stats.mean_vals[i] += obj[i];
+        }
+    }
+
+    for (std::size_t i = 0; i < M; ++i) {
+        stats.mean_vals[i] /= static_cast<double>(objs.size());
+    }
+
+    for (const auto& obj : objs) {
+        for (std::size_t i = 0; i < M; ++i) {
+            double diff = obj[i] - stats.mean_vals[i];
+            stats.std_vals[i] += diff * diff;
+        }
+    }
+
+    for (std::size_t i = 0; i < M; ++i) {
+        stats.std_vals[i] = std::sqrt(stats.std_vals[i] / static_cast<double>(objs.size()));
+    }
+
+    stats.hv = hipervolumen(objs, hv_ref);
+    return stats;
 }
 
 static void ajustar_probabilidades(
@@ -501,7 +469,33 @@ static double scalarizacion_pbi(
     return d1 + (theta * d2);
 }
 
+static std::pair<int, int> seleccionar_padres(
+    int idx,
+    const std::vector<std::vector<int>>& vecinos,
+    int pop_size,
+    std::mt19937& rng,
+    double prob_vecindario = 0.9) {
+    const auto& vec = vecinos[idx];
+    std::vector<int> fuera;
+    fuera.reserve(pop_size);
+    for (int j = 0; j < pop_size; ++j) {
+        if (std::find(vec.begin(), vec.end(), j) == vec.end()) {
+            fuera.push_back(j);
+        }
+    }
 
+    const std::vector<int>& pool = (rand_real(rng) < prob_vecindario || fuera.empty()) ? vec : fuera;
+    if (pool.size() == 1) {
+        return {pool[0], pool[0]};
+    }
+
+    int i1 = rand_int(0, static_cast<int>(pool.size() - 1), rng);
+    int i2 = i1;
+    while (i2 == i1) {
+        i2 = rand_int(0, static_cast<int>(pool.size() - 1), rng);
+    }
+    return {pool[i1], pool[i2]};
+}
 
 static std::vector<std::tuple<moead::Chromosome, moead::Chromosome, Obj>>
 generar_hijos(
@@ -605,7 +599,7 @@ generar_hijos(
 
 static void guardar_reglas(const std::vector<Individual>& pop, const std::string& path) {
     std::ofstream out(path);
-    out << "antecedente,consecuente,support,confidence,leverage,chi_cuadrada,coverage,rule_size\n";
+    out << "antecedente,consecuente,jaccard,cosine,phi,kappa\n";
     out << std::fixed << std::setprecision(6);
     for (const auto& ind : pop) {
         auto decoded = decode_rule(ind.c1, ind.c2);
@@ -614,9 +608,7 @@ static void guardar_reglas(const std::vector<Individual>& pop, const std::string
             << ind.metrics[0] << ","
             << ind.metrics[1] << ","
             << ind.metrics[2] << ","
-            << ind.metrics[3] << ","
-            << ind.metrics[4] << ","
-            << ind.metrics[5] << "\n";
+            << ind.metrics[3] << "\n";
     }
 }
 
@@ -826,10 +818,11 @@ moead_run(
 }
 
 }  
+
 int main() {
     try {
-        auto df = moead::read_csv("discretized_dataset.csv");
-        std::vector<int> seeds = {2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71,73,79,83,89,97,101,103,107,109,113};
+        auto df = moead::read_csv("discretized_dataset_2.csv");
+        std::vector<int> seeds = {2,3,5,7,11,13,17,19,23,29};
 
         auto weights = moead::generar_pesos_das_dennis(M, POP_SIZE);
         auto vecindarios = construir_vecindarios(weights, NEIGHBOR_SIZE);

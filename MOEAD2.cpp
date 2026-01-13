@@ -909,21 +909,6 @@ int main() {
             std::sort(runs_info.begin(), runs_info.end(), [](const RunInfo& a, const RunInfo& b) {
                 return a.hv < b.hv;
             });
-            double hv_sum = 0.0;
-            double seed_sum = 0.0;
-            for (const auto& run : runs_info) {
-                hv_sum += run.hv;
-                seed_sum += run.seed;
-            }
-            double hv_avg = hv_sum / runs_info.size();
-            double seed_avg = seed_sum / runs_info.size();
-            std::string summary_path = "summary_moead2.csv";
-            {
-                std::ofstream out(summary_path);
-                out << "seed_avg,hv_avg\n";
-                out << seed_avg << "," << hv_avg << "\n";
-            }
-            std::cout << "Resumen promedio guardado en " << summary_path << "\n";
             std::size_t med_idx = runs_info.size() / 2;
             const auto& med_run = runs_info[med_idx];
             std::cout << "Semilla mediana por HV: " << med_run.seed

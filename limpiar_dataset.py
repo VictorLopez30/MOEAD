@@ -1,9 +1,9 @@
 import pandas as pd
 
 INPUT = "dataset.csv"
-OUTPUT = "discretized_dataset.csv"
+OUTPUT = "discretized_dataset_2.csv"
 
-DROP_COLS = ["r1","r2","r3","r4","r5","r6","r7","r8","r9","r10","r11","r12","r13","r14","r15","r16","r17","r18","r19","r20","r21","r22","r23","r24","r25","r26","r27"]
+#DROP_COLS = ["r1","r2","r3","r4","r5","r6","r7","r8","r9","r10","r11","r12","r13","r14","r15","r16","r17","r18","r19","r20","r21","r22","r23","r24","r25","r26","r27"]
 
 QUINTILE_COLS = ["freq ceros","freq unos","freq dos","width","actividad","entropia","sensitividad","time entropy"]
 
@@ -34,7 +34,7 @@ def discretize(df: pd.DataFrame) -> pd.DataFrame:
 
 def main() -> None:
     df = pd.read_csv(INPUT)
-    df.drop(columns=DROP_COLS, inplace=True, errors="ignore")
+    #df.drop(columns=DROP_COLS, inplace=True, errors="ignore")
     df = discretize(df)
     df.to_csv(OUTPUT, index=False, encoding="utf-8")
 
